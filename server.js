@@ -47,9 +47,7 @@ async function createWindowsCursorOrIcon(pngBuffer, type = 'ico') {
     return Buffer.concat([header, entry, pngBuffer]);
 }
 
-// Fixed background keying function with correct Sharp raw syntax
 async function removeWhiteBackground(inputPath, outputPath) {
-    // Ensure SVGs and other files are rendered into a stable PNG buffer first
     const safeBuffer = await sharp(inputPath)
         .resize(256, 256, { fit: 'contain', background: { r: 255, g: 255, b: 255, alpha: 0 } })
         .png()
@@ -57,7 +55,8 @@ async function removeWhiteBackground(inputPath, outputPath) {
 
     const { data, info } = await sharp(safeBuffer)
         .ensureAlpha()
-        .raw({ resolveWithObject: true });
+        .raw({ resolveWithObject: true })
+        .toBuffer({ resolveWithObject: true });
 
     const pixelCount = info.width * info.height;
     for (let i = 0; i < pixelCount; i++) {
@@ -66,7 +65,6 @@ async function removeWhiteBackground(inputPath, outputPath) {
         const g = data[idx + 1];
         const b = data[idx + 2];
 
-        // Strip near-white pixels into full transparency
         if (r > 235 && g > 235 && b > 235) {
             data[idx + 3] = 0;
         }
@@ -83,7 +81,6 @@ async function removeWhiteBackground(inputPath, outputPath) {
     .toFile(outputPath);
 }
 
-// Standalone Background Remover Route
 app.post('/remove-bg', upload.single('file'), async (req, res) => {
     if (!req.file) return res.status(400).send('No file uploaded.');
     
@@ -102,7 +99,6 @@ app.post('/remove-bg', upload.single('file'), async (req, res) => {
     }
 });
 
-// Main Multi-File Conversion Route
 app.post('/convert', upload.array('files'), async (req, res) => {
     if (!req.files || req.files.length === 0) {
         return res.status(400).send('No files uploaded.');
@@ -149,7 +145,6 @@ app.post('/convert', upload.array('files'), async (req, res) => {
                     fs.writeFileSync(outputPath, validBinaryBuffer);
                     convertedFiles.push(outputPath);
                 } else if (targetFormat === 'svg') {
-                    // If converting to SVG from raster/cursor files, handle via vector container or fallback to PNG conversion wrapper
                     await pipeline.png().toFile(outputPath);
                     convertedFiles.push(outputPath);
                 } else {
@@ -183,3 +178,7 @@ app.post('/convert', upload.array('files'), async (req, res) => {
         console.error(error);
         res.status(500).send('Processing error.');
     }
+});
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`PseudoConvert Ultimate running on port ${PORT}`));
