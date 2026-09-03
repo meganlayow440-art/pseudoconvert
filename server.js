@@ -47,21 +47,49 @@ async function createWindowsCursorOrIcon(pngBuffer, type = 'ico') {
     return Buffer.concat([header, entry, pngBuffer]);
 }
 
+// Advanced background keying function to clear out white/light backgrounds
+async function removeWhiteBackground(inputPath, outputPath) {
+    // Read raw pixel data to manipulate channels directly
+    const { data, info } = await sharp(inputPath)
+        .ensureAlpha()
+        .raw()
+        .toBuffer({ resolveWithObject: { width: true, height: true } });
+
+    const pixelCount = info.width * info.height;
+    for (let i = 0; i < pixelCount; i++) {
+        const idx = i * 4;
+        const r = data[idx];
+        const g = data[idx + 1];
+        const b = data[idx + 2];
+
+        // If the pixel is close to pure white (threshold > 235), fade its alpha to 0
+        if (r > 235 && g > 235 && b > 235) {
+            data[idx + 3] = 0; // Set alpha to fully transparent
+        }
+    }
+
+    await sharp(data, {
+        raw: {
+            width: info.width,
+            height: info.height,
+            channels: 4
+        }
+    })
+    .png()
+    .toFile(outputPath);
+}
+
 // Standalone Background Remover Route
 app.post('/remove-bg', upload.single('file'), async (req, res) => {
     if (!req.file) return res.status(400).send('No file uploaded.');
     
     const outputPath = path.join(__dirname, `uploads/nobg_${Date.now()}.png`);
     try {
-        await sharp(req.file.path)
-            .ensureAlpha()
-            .flatten({ background: { r: 255, g: 255, b: 255 } })
-            .png()
-            .toFile(outputPath);
+        await removeWhiteBackground(req.file.path, outputPath);
 
         res.download(outputPath, 'nobg-image.png', () => {
-            fs.unlinkSync(req.file.path);
-            fs.unlinkSync(outputPath);
+            if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+            if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath);
         });
     } catch (err) {
         console.error(err);
@@ -91,18 +119,22 @@ app.post('/convert', upload.array('files'), async (req, res) => {
         for (let i = 0; i < req.files.length; i++) {
             const file = req.files[i];
             let targetFormat = formats[i] ? formats[i].toLowerCase().replace('.', '') : 'png';
-            // Handle array or individual checkbox matching string boolean values
             const shouldRemoveBg = removeBgs && (removeBgs[i] === 'true' || removeBgs[i] === true);
             const originalName = path.parse(file.originalname).name;
             const outputFileName = `${originalName}.${targetFormat}`;
             const outputPath = path.join(outputDir, outputFileName);
 
-            try {
-                let pipeline = sharp(file.path);
+            let tempWorkingPath = file.path;
 
+            try {
+                // If background removal is requested, process it first into a temp transparent file
                 if (shouldRemoveBg) {
-                    pipeline = pipeline.ensureAlpha().flatten({ background: { r: 255, g: 255, b: 255 } });
+                    const noBgPath = path.join(__dirname, `uploads/temp_nobg_${Date.now()}_${i}.png`);
+                    await removeWhiteBackground(file.path, noBgPath);
+                    tempWorkingPath = noBgPath;
                 }
+
+                let pipeline = sharp(tempWorkingPath);
 
                 if (targetFormat === 'ico' || targetFormat === 'cur') {
                     const pngBuffer = await pipeline
@@ -116,6 +148,11 @@ app.post('/convert', upload.array('files'), async (req, res) => {
                 } else {
                     await pipeline.toFormat(targetFormat).toFile(outputPath);
                     convertedFiles.push(outputPath);
+                }
+
+                // Cleanup temp nobg file if used
+                if (tempWorkingPath !== file.path && fs.existsSync(tempWorkingPath)) {
+                    fs.unlinkSync(tempWorkingPath);
                 }
             } catch (err) {
                 console.error(`Conversion error for ${file.originalname}:`, err.message);
