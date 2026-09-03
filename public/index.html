@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PseudoConvert - Pro Pixel Edition</title>
+    <title>PseudoConvert - Ultimate Edition</title>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Share+Tech+Mono&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -37,13 +37,13 @@
             box-shadow: 8px 8px 0px var(--accent-pink);
             padding: 30px;
             box-sizing: border-box;
-            margin-top: 20px;
+            margin-top: 10px;
         }
 
         h1 {
             font-family: 'Press Start 2P', monospace;
             color: var(--accent-cyan);
-            font-size: 20px;
+            font-size: 18px;
             text-align: center;
             text-shadow: 3px 3px var(--accent-pink);
             margin-bottom: 5px;
@@ -51,12 +51,40 @@
 
         .slogan {
             font-family: 'Press Start 2P', monospace;
-            font-size: 8px;
+            font-size: 7px;
             color: var(--accent-yellow);
             text-align: center;
-            margin-bottom: 25px;
+            margin-bottom: 20px;
             text-transform: uppercase;
         }
+
+        .nav-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .tab-btn {
+            flex: 1;
+            background: #110722;
+            color: var(--text-color);
+            border: 2px solid #4a1f6d;
+            font-family: 'Press Start 2P', monospace;
+            font-size: 8px;
+            padding: 10px;
+            cursor: pointer;
+            text-align: center;
+        }
+
+        .tab-btn.active {
+            background: var(--accent-cyan);
+            color: #000;
+            border-color: #fff;
+            font-weight: bold;
+        }
+
+        .view-section { display: none; }
+        .view-section.active { display: block; }
 
         .dropzone {
             border: 3px dashed var(--accent-pink);
@@ -64,41 +92,44 @@
             text-align: center;
             background: #1f113a;
             cursor: pointer;
-            margin-bottom: 20px;
-            transition: 0.2s;
+            margin-bottom: 15px;
         }
 
-        .dropzone:hover {
-            border-color: var(--accent-cyan);
-            background: #2a164e;
+        .batch-toolbar {
+            background: #110722;
+            border: 2px solid var(--accent-cyan);
+            padding: 10px 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            font-size: 12px;
         }
 
-        .dropzone p {
-            font-family: 'Press Start 2P', monospace;
-            font-size: 9px;
-            color: var(--text-color);
-            line-height: 1.6;
-        }
-
-        input[type="file"] {
-            display: none;
+        .batch-toolbar select, .batch-toolbar button {
+            background: #231043;
+            color: var(--accent-cyan);
+            border: 1px solid var(--accent-cyan);
+            padding: 5px;
+            font-family: 'Share Tech Mono', monospace;
+            cursor: pointer;
         }
 
         #fileList {
             margin-bottom: 20px;
-            max-height: 300px;
+            max-height: 250px;
             overflow-y: auto;
         }
 
         .file-item {
             background: #110722;
             border: 2px solid #4a1f6d;
-            padding: 10px 15px;
+            padding: 8px 12px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 10px;
-            font-size: 13px;
+            margin-bottom: 8px;
+            font-size: 12px;
             gap: 10px;
         }
 
@@ -114,8 +145,6 @@
             border: 2px solid var(--accent-cyan);
             padding: 4px;
             font-family: 'Share Tech Mono', monospace;
-            font-weight: bold;
-            cursor: pointer;
         }
 
         .bg-remove-label {
@@ -131,36 +160,39 @@
             background: var(--accent-pink);
             color: white;
             font-family: 'Press Start 2P', monospace;
-            font-size: 11px;
+            font-size: 10px;
             border: 3px solid #fff;
-            padding: 15px;
+            padding: 12px;
             width: 100%;
             cursor: pointer;
             box-shadow: 4px 4px 0px var(--accent-cyan);
             text-transform: uppercase;
-            transition: 0.1s;
         }
 
-        .action-btn:hover {
-            background: #ff2a9d;
-            transform: translate(-2px, -2px);
-            box-shadow: 6px 6px 0px var(--accent-cyan);
+        .action-btn:hover { background: #ff2a9d; }
+
+        .switch-footer {
+            margin-top: 25px;
+            text-align: center;
+        }
+
+        .switch-footer button {
+            background: transparent;
+            color: var(--accent-yellow);
+            border: none;
+            font-family: 'Press Start 2P', monospace;
+            font-size: 8px;
+            cursor: pointer;
+            text-decoration: underline;
         }
 
         #loading {
             display: none;
             text-align: center;
             font-family: 'Press Start 2P', monospace;
-            font-size: 9px;
+            font-size: 8px;
             color: var(--accent-yellow);
-            margin-top: 20px;
-            animation: blink 1s infinite;
-        }
-
-        @keyframes blink {
-            0% { opacity: 1; }
-            50% { opacity: 0.3; }
-            100% { opacity: 1; }
+            margin-top: 15px;
         }
     </style>
 </head>
@@ -170,27 +202,83 @@
         <h1>PseudoConvert</h1>
         <div class="slogan">"We will convert anything for free."</div>
 
-        <form id="convertForm" action="/convert" method="POST" enctype="multipart/form-data">
-            <div class="dropzone" onclick="document.getElementById('fileInput').click();">
-                <p>📂 CLICK OR DROP FILES HERE<br><span style="font-size: 7px; color: #8b82a8;">(PNG, JPG, SVG, ICO, CUR, PDF, etc.)</span></p>
-                <input type="file" id="fileInput" name="files" multiple>
+        <div class="nav-tabs">
+            <button class="tab-btn active" onclick="switchView('converter')">🗂️ BATCH CONVERTER</button>
+            <button class="tab-btn" onclick="switchView('bgremover')">✂️ BG REMOVER TOOL</button>
+        </div>
+
+        <!-- BATCH CONVERTER VIEW -->
+        <div id="converterView" class="view-section active">
+            <form id="convertForm" action="/convert" method="POST" enctype="multipart/form-data">
+                <div class="dropzone" onclick="document.getElementById('fileInput').click();">
+                    <p style="font-family:'Press Start 2P'; font-size:8px;">📂 CLICK OR DROP FILES HERE</p>
+                    <input type="file" id="fileInput" name="files" multiple style="display:none;">
+                </div>
+
+                <div class="batch-toolbar" id="batchToolbar" style="display:none;">
+                    <div>
+                        <label style="color:var(--accent-yellow);">APPLY ALL:</label>
+                        <select id="masterFormat">
+                            <option value="png">PNG</option>
+                            <option value="jpg">JPG</option>
+                            <option value="webp">WEBP</option>
+                            <option value="svg">SVG</option>
+                            <option value="ico">ICO</option>
+                            <option value="cur">CUR</option>
+                            <option value="pdf">PDF</option>
+                        </select>
+                        <button type="button" onclick="applyAllFormats()">Set All</button>
+                    </div>
+                    <div>
+                        <label class="bg-remove-label">
+                            <input type="checkbox" id="masterNoBg" onchange="toggleAllNoBg(this)"> Select All No-BG
+                        </label>
+                    </div>
+                </div>
+
+                <div id="fileList"></div>
+                <button type="submit" class="action-btn" id="submitBtn" style="display:none;">Convert Batch & Download ZIP</button>
+            </form>
+            <div class="switch-footer">
+                <button type="button" onclick="switchView('bgremover')">👉 Need Dedicated Background Removal?</button>
             </div>
+        </div>
 
-            <div id="fileList"></div>
+        <!-- STANDALONE BG REMOVER VIEW -->
+        <div id="bgremoverView" class="view-section">
+            <form id="bgForm">
+                <div class="dropzone" onclick="document.getElementById('bgFileInput').click();">
+                    <p style="font-family:'Press Start 2P'; font-size:8px;">✂️ DROP SINGLE IMAGE FOR BG REMOVAL</p>
+                    <input type="file" id="bgFileInput" name="file" accept="image/*" style="display:none;">
+                </div>
+                <div id="selectedBgFile" style="font-size:12px; margin-bottom:15px; text-align:center; color:var(--accent-cyan);"></div>
+                <button type="submit" class="action-btn" id="bgSubmitBtn" style="display:none;">Remove Background & Download</button>
+            </form>
+            <div class="switch-footer">
+                <button type="button" onclick="switchView('converter')">👈 Back to Multi-File Converter</button>
+            </div>
+        </div>
 
-            <button type="submit" class="action-btn" id="submitBtn" style="display:none;">Convert Batch & Download ZIP</button>
-        </form>
-
-        <div id="loading">⚡ PROCESSING PIXELS & BG REMOVAL... ⚡</div>
+        <div id="loading">⚡ PROCESSING... PLEASE WAIT ⚡</div>
     </div>
 
 <script>
+    function switchView(viewName) {
+        document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+        if(viewName === 'converter') {
+            document.getElementById('converterView').classList.add('active');
+            document.querySelectorAll('.tab-btn')[0].classList.add('active');
+        } else {
+            document.getElementById('bgremoverView').classList.add('active');
+            document.querySelectorAll('.tab-btn')[1].classList.add('active');
+        }
+    }
+
     const fileInput = document.getElementById('fileInput');
     const fileListDiv = document.getElementById('fileList');
     const submitBtn = document.getElementById('submitBtn');
-    const form = document.getElementById('convertForm');
-    const loading = document.getElementById('loading');
-
+    const batchToolbar = document.getElementById('batchToolbar');
     let selectedFilesData = [];
 
     fileInput.addEventListener('change', (e) => {
@@ -202,19 +290,20 @@
         fileListDiv.innerHTML = '';
         if (selectedFilesData.length > 0) {
             submitBtn.style.display = 'block';
+            batchToolbar.style.display = 'flex';
         } else {
             submitBtn.style.display = 'none';
+            batchToolbar.style.display = 'none';
         }
 
         selectedFilesData.forEach((file, index) => {
             const item = document.createElement('div');
             item.className = 'file-item';
-            
             item.innerHTML = `
                 <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 35%;">${file.name}</span>
                 <div class="file-controls">
                     <label class="bg-remove-label">
-                        <input type="checkbox" name="removeBg_${index}" value="true"> No-BG
+                        <input type="checkbox" name="removeBg_${index}" value="true" class="nobg-checkbox"> No-BG
                     </label>
                     <div>
                         <span style="font-size: 10px; color: #a5b4fc;">TO:</span>
@@ -234,49 +323,82 @@
         });
     }
 
-    form.onsubmit = async function(e) {
+    function applyAllFormats() {
+        const val = document.getElementById('masterFormat').value;
+        document.querySelectorAll('select[name="formats"]').forEach(sel => sel.value = val);
+    }
+
+    function toggleAllNoBg(masterCheckbox) {
+        document.querySelectorAll('.nobg-checkbox').forEach(cb => cb.checked = masterCheckbox.checked);
+    }
+
+    // Convert Form Submit
+    document.getElementById('convertForm').onsubmit = async function(e) {
         e.preventDefault();
-        loading.style.display = 'block';
+        document.getElementById('loading').style.display = 'block';
         submitBtn.style.display = 'none';
 
         const formData = new FormData();
-        
         selectedFilesData.forEach((file, index) => {
             formData.append('files', file);
             const bgCheckbox = document.querySelector(`input[name="removeBg_${index}"]`);
             formData.append('removeBg', bgCheckbox ? bgCheckbox.checked : false);
         });
 
-        const selects = document.querySelectorAll('select[name="formats"]');
-        selects.forEach(sel => {
-            formData.append('formats', sel.value);
-        });
+        document.querySelectorAll('select[name="formats"]').forEach(sel => formData.append('formats', sel.value));
 
         try {
-            const response = await fetch('/convert', {
-                method: 'POST',
-                body: formData
-            });
-
+            const response = await fetch('/convert', { method: 'POST', body: formData });
             if (response.ok) {
                 const blob = await response.blob();
                 const url = window.URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = 'pseudoconvert-pro.zip';
+                a.download = 'pseudoconvert-batch.zip';
                 document.body.appendChild(a);
                 a.click();
                 a.remove();
-            } else {
-                alert('Conversion failed on server.');
-            }
-        } catch (err) {
-            console.error(err);
-            alert('Network error occurred.');
-        } finally {
-            loading.style.display = 'none';
+            } else { alert('Conversion failed.'); }
+        } catch (err) { alert('Network error.'); }
+        finally {
+            document.getElementById('loading').style.display = 'none';
             submitBtn.style.display = 'block';
         }
+    };
+
+    // Standalone BG Remover Logic
+    const bgFileInput = document.getElementById('bgFileInput');
+    let selectedBgFile = null;
+    bgFileInput.addEventListener('change', (e) => {
+        selectedBgFile = e.target.files[0];
+        if(selectedBgFile) {
+            document.getElementById('selectedBgFile').innerText = `Selected: ${selectedBgFile.name}`;
+            document.getElementById('bgSubmitBtn').style.display = 'block';
+        }
+    });
+
+    document.getElementById('bgForm').onsubmit = async function(e) {
+        e.preventDefault();
+        if(!selectedBgFile) return;
+        document.getElementById('loading').style.display = 'block';
+        
+        const formData = new FormData();
+        formData.append('file', selectedBgFile);
+
+        try {
+            const response = await fetch('/remove-bg', { method: 'POST', body: formData });
+            if(response.ok) {
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'nobg-image.png';
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+            } else { alert('BG Removal failed.'); }
+        } catch(err) { alert('Network error.'); }
+        finally { document.getElementById('loading').style.display = 'none'; }
     };
 </script>
 
