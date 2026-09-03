@@ -3,46 +3,265 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PseudoConvert - Free File Converter</title>
+    <title>PseudoConvert - Retro Pixel Edition</title>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Share+Tech+Mono&display=swap" rel="stylesheet">
     <style>
-        body { font-family: Arial, sans-serif; background: #0f172a; color: #f8fafc; text-align: center; margin: 0; padding: 50px; }
-        .container { max-width: 600px; margin: auto; background: #1e293b; padding: 30px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); }
-        h1 { color: #38bdf8; margin-bottom: 5px; }
-        .slogan { font-style: italic; color: #94a3b8; margin-bottom: 25px; }
-        input[type="file"], select { margin: 15px 0; padding: 10px; background: #334155; color: white; border: 1px solid #475569; border-radius: 6px; width: 80%; }
-        button { background: #0ea5e9; color: white; border: none; padding: 12px 25px; font-size: 16px; border-radius: 6px; cursor: pointer; font-weight: bold; }
-        button:hover { background: #0284c7; }
-        #loading { display: none; margin-top: 15px; color: #38bdf8; }
+        :root {
+            --bg-color: #0b061a;
+            --panel-bg: #160d2b;
+            --accent-pink: #ff007f;
+            --accent-cyan: #00f3ff;
+            --accent-yellow: #fffe00;
+            --text-color: #e2e8f0;
+        }
+
+        body {
+            font-family: 'Share Tech Mono', monospace;
+            background-color: var(--bg-color);
+            background-image: 
+                linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), 
+                linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            background-size: 100% 4px, 6px 100%;
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 750px;
+            background: var(--panel-bg);
+            border: 4px solid var(--accent-cyan);
+            box-shadow: 8px 8px 0px var(--accent-pink);
+            padding: 30px;
+            box-sizing: border-box;
+            margin-top: 30px;
+        }
+
+        h1 {
+            font-family: 'Press Start 2P', monospace;
+            color: var(--accent-cyan);
+            font-size: 22px;
+            text-align: center;
+            text-shadow: 3px 3px var(--accent-pink);
+            margin-bottom: 5px;
+        }
+
+        .slogan {
+            font-family: 'Press Start 2P', monospace;
+            font-size: 9px;
+            color: var(--accent-yellow);
+            text-align: center;
+            margin-bottom: 30px;
+            text-transform: uppercase;
+        }
+
+        .dropzone {
+            border: 3px dashed var(--accent-pink);
+            padding: 30px;
+            text-align: center;
+            background: #1f113a;
+            cursor: pointer;
+            margin-bottom: 20px;
+            transition: 0.2s;
+        }
+
+        .dropzone:hover {
+            border-color: var(--accent-cyan);
+            background: #2a164e;
+        }
+
+        .dropzone p {
+            font-family: 'Press Start 2P', monospace;
+            font-size: 10px;
+            color: var(--text-color);
+            line-height: 1.6;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        #fileList {
+            margin-bottom: 25px;
+            max-height: 250px;
+            overflow-y: auto;
+        }
+
+        .file-item {
+            background: #110722;
+            border: 2px solid #4a1f6d;
+            padding: 10px 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+
+        .file-item select {
+            background: #231043;
+            color: var(--accent-cyan);
+            border: 2px solid var(--accent-cyan);
+            padding: 5px;
+            font-family: 'Share Tech Mono', monospace;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .action-btn {
+            background: var(--accent-pink);
+            color: white;
+            font-family: 'Press Start 2P', monospace;
+            font-size: 12px;
+            border: 3px solid #fff;
+            padding: 15px;
+            width: 100%;
+            cursor: pointer;
+            box-shadow: 4px 4px 0px var(--accent-cyan);
+            text-transform: uppercase;
+            transition: 0.1s;
+        }
+
+        .action-btn:hover {
+            background: #ff2a9d;
+            transform: translate(-2px, -2px);
+            box-shadow: 6px 6px 0px var(--accent-cyan);
+        }
+
+        .action-btn:active {
+            transform: translate(2px, 2px);
+            box-shadow: 2px 2px 0px var(--accent-cyan);
+        }
+
+        #loading {
+            display: none;
+            text-align: center;
+            font-family: 'Press Start 2P', monospace;
+            font-size: 10px;
+            color: var(--accent-yellow);
+            margin-top: 20px;
+            animation: blink 1s infinite;
+        }
+
+        @keyframes blink {
+            0% { opacity: 1; }
+            50% { opacity: 0.3; }
+            100% { opacity: 1; }
+        }
     </style>
 </head>
 <body>
+
     <div class="container">
         <h1>PseudoConvert</h1>
-        <p class="slogan">"We will convert anything for free."</p>
-        
-        <form id="uploadForm" action="/convert" method="POST" enctype="multipart/form-data">
-            <div>
-                <input type="file" name="files" multiple required><br>
+        <div class="slogan">"We will convert anything for free."</div>
+
+        <form id="convertForm" action="/convert" method="POST" enctype="multipart/form-data">
+            <div class="dropzone" onclick="document.getElementById('fileInput').click();">
+                <p>📂 CLICK OR DROP FILES HERE<br><span style="font-size: 8px; color: #8b82a8;">(Select multiple files)</span></p>
+                <input type="file" id="fileInput" name="files" multiple>
             </div>
-            <div>
-                <label>Convert to format: </label>
-                <select name="format">
-                    <option value="png">PNG</option>
-                    <option value="jpg">JPG</option>
-                    <option value="webp">WEBP</option>
-                    <option value="avif">AVIF</option>
-                    <option value="tiff">TIFF</option>
-                </select>
-            </div>
-            <button type="submit">Convert & Download ZIP</button>
+
+            <div id="fileList"></div>
+
+            <button type="submit" class="action-btn" id="submitBtn" style="display:none;">Convert All & Download ZIP</button>
         </form>
-        <div id="loading">Converting your files... Please wait.</div>
+
+        <div id="loading">⚡ CONVERTING PIXELS... PLEASE WAIT ⚡</div>
     </div>
 
 <script>
-    document.getElementById('uploadForm').onsubmit = function() {
-        document.getElementById('loading').style.display = 'block';
+    const fileInput = document.getElementById('fileInput');
+    const fileListDiv = document.getElementById('fileList');
+    const submitBtn = document.getElementById('submitBtn');
+    const form = document.getElementById('convertForm');
+    const loading = document.getElementById('loading');
+
+    let selectedFilesData = [];
+
+    fileInput.addEventListener('change', (e) => {
+        const files = Array.from(e.target.files);
+        selectedFilesData = files;
+        renderFileList();
+    });
+
+    function renderFileList() {
+        fileListDiv.innerHTML = '';
+        if (selectedFilesData.length > 0) {
+            submitBtn.style.display = 'block';
+        } else {
+            submitBtn.style.display = 'none';
+        }
+
+        selectedFilesData.forEach((file, index) => {
+            const item = document.createElement('div');
+            item.className = 'file-item';
+            
+            item.innerHTML = `
+                <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 55%;">${file.name}</span>
+                <div>
+                    <label style="font-size: 11px; color: #a5b4fc;">TO:</label>
+                    <select name="formats" data-index="${index}">
+                        <option value="png">PNG</option>
+                        <option value="jpg">JPG</option>
+                        <option value="webp">WEBP</option>
+                        <option value="avif">AVIF</option>
+                        <option value="tiff">TIFF</option>
+                    </select>
+                </div>
+            `;
+            fileListDiv.appendChild(item);
+        });
+    }
+
+    form.onsubmit = async function(e) {
+        e.preventDefault();
+        loading.style.display = 'block';
+        submitBtn.style.display = 'none';
+
+        const formData = new FormData();
+        
+        // Append raw files
+        selectedFilesData.forEach(file => {
+            formData.append('files', file);
+        });
+
+        // Append corresponding custom formats selected for each file
+        const selects = document.querySelectorAll('select[name="formats"]');
+        selects.forEach(sel => {
+            formData.append('formats', sel.value);
+        });
+
+        try {
+            const response = await fetch('/convert', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (response.ok) {
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'pseudoconvert-batch.zip';
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+            } else {
+                alert('Conversion failed on server.');
+            }
+        } catch (err) {
+            console.error(err);
+            alert('Network error occurred.');
+        } finally {
+            loading.style.display = 'none';
+            submitBtn.style.display = 'block';
+        }
     };
 </script>
+
 </body>
 </html>
