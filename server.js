@@ -8,6 +8,8 @@ const sharp = require('sharp');
 const app = express();
 const upload = multer({ dest: 'uploads/' });
 
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 app.use(express.static('public'));
 
 app.post('/convert', upload.array('files'), async (req, res) => {
@@ -15,41 +17,44 @@ app.post('/convert', upload.array('files'), async (req, res) => {
         return res.status(400).send('No files uploaded.');
     }
 
-    const targetFormat = req.body.format ? req.body.format.toLowerCase().replace('.', '') : 'png';
-    const convertedFiles = [];
+    // Formats map from frontend index
+    let formats = req.body.formats;
+    if (typeof formats === 'string') {
+        formats = [formats];
+    }
+
     const timestamp = Date.now();
     const outputDir = path.join(__dirname, `output_${timestamp}`);
     fs.mkdirSync(outputDir, { recursive: true });
+    const convertedFiles = [];
 
     try {
-        for (const file of req.files) {
+        for (let i = 0; i < req.files.length; i++) {
+            const file = req.files[i];
+            const targetFormat = formats[i] ? formats[i].toLowerCase().replace('.', '') : 'png';
             const originalName = path.parse(file.originalname).name;
             const outputFileName = `${originalName}.${targetFormat}`;
             const outputPath = path.join(outputDir, outputFileName);
 
-            // Dynamic conversion logic using Sharp (handles standard images, can be expanded)
             try {
                 await sharp(file.path)
                     .toFormat(targetFormat)
                     .toFile(outputPath);
-                
                 convertedFiles.push(outputPath);
-            } catch (conversionError) {
-                console.error(`Failed to convert ${file.originalname}:`, conversionError.message);
-                // Fallback: If format isn't directly supported by Sharp, copy original or handle gracefully
+            } catch (err) {
+                console.error(`Conversion error for ${file.originalname}:`, err.message);
             }
 
-            // Clean up uploaded raw file
+            // Cleanup raw upload
             fs.unlinkSync(file.path);
         }
 
         if (convertedFiles.length === 0) {
-            return res.status(500).send('Conversion failed for all uploaded files.');
+            return res.status(500).send('All conversions failed.');
         }
 
-        // Create a ZIP archive of converted files
         res.setHeader('Content-Type', 'application/zip');
-        res.setHeader('Content-Disposition', 'attachment; filename=pseudoconvert-files.zip');
+        res.setHeader('Content-Disposition', 'attachment; filename=pseudoconvert-batch.zip');
 
         const archive = archiver('zip', { zlib: { level: 9 } });
         archive.pipe(res);
@@ -60,18 +65,17 @@ app.post('/convert', upload.array('files'), async (req, res) => {
 
         await archive.finalize();
 
-        // Clean up output folder after sending
         setTimeout(() => {
             fs.rmSync(outputDir, { recursive: true, force: true });
         }, 10000);
 
     } catch (error) {
         console.error(error);
-        res.status(500).send('An error occurred during conversion processing.');
+        res.status(500).send('Processing error.');
     }
 });
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-    console.log(`PseudoConvert running on port ${PORT}`);
+    console.log(`PseudoConvert 10X running on port ${PORT}`);
 });
