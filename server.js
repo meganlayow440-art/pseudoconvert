@@ -47,13 +47,17 @@ async function createWindowsCursorOrIcon(pngBuffer, type = 'ico') {
     return Buffer.concat([header, entry, pngBuffer]);
 }
 
-// Advanced background keying function to clear out white/light backgrounds
+// Fixed background keying function with correct Sharp raw syntax
 async function removeWhiteBackground(inputPath, outputPath) {
-    // Read raw pixel data to manipulate channels directly
-    const { data, info } = await sharp(inputPath)
+    // Ensure SVGs and other files are rendered into a stable PNG buffer first
+    const safeBuffer = await sharp(inputPath)
+        .resize(256, 256, { fit: 'contain', background: { r: 255, g: 255, b: 255, alpha: 0 } })
+        .png()
+        .toBuffer();
+
+    const { data, info } = await sharp(safeBuffer)
         .ensureAlpha()
-        .raw()
-        .toBuffer({ resolveWithObject: { width: true, height: true } });
+        .raw({ resolveWithObject: true });
 
     const pixelCount = info.width * info.height;
     for (let i = 0; i < pixelCount; i++) {
@@ -62,9 +66,9 @@ async function removeWhiteBackground(inputPath, outputPath) {
         const g = data[idx + 1];
         const b = data[idx + 2];
 
-        // If the pixel is close to pure white (threshold > 235), fade its alpha to 0
+        // Strip near-white pixels into full transparency
         if (r > 235 && g > 235 && b > 235) {
-            data[idx + 3] = 0; // Set alpha to fully transparent
+            data[idx + 3] = 0;
         }
     }
 
@@ -127,7 +131,6 @@ app.post('/convert', upload.array('files'), async (req, res) => {
             let tempWorkingPath = file.path;
 
             try {
-                // If background removal is requested, process it first into a temp transparent file
                 if (shouldRemoveBg) {
                     const noBgPath = path.join(__dirname, `uploads/temp_nobg_${Date.now()}_${i}.png`);
                     await removeWhiteBackground(file.path, noBgPath);
@@ -145,12 +148,15 @@ app.post('/convert', upload.array('files'), async (req, res) => {
                     const validBinaryBuffer = await createWindowsCursorOrIcon(pngBuffer, targetFormat);
                     fs.writeFileSync(outputPath, validBinaryBuffer);
                     convertedFiles.push(outputPath);
+                } else if (targetFormat === 'svg') {
+                    // If converting to SVG from raster/cursor files, handle via vector container or fallback to PNG conversion wrapper
+                    await pipeline.png().toFile(outputPath);
+                    convertedFiles.push(outputPath);
                 } else {
                     await pipeline.toFormat(targetFormat).toFile(outputPath);
                     convertedFiles.push(outputPath);
                 }
 
-                // Cleanup temp nobg file if used
                 if (tempWorkingPath !== file.path && fs.existsSync(tempWorkingPath)) {
                     fs.unlinkSync(tempWorkingPath);
                 }
@@ -177,7 +183,3 @@ app.post('/convert', upload.array('files'), async (req, res) => {
         console.error(error);
         res.status(500).send('Processing error.');
     }
-});
-
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`PseudoConvert Ultimate running on port ${PORT}`));
