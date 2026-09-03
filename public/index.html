@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PseudoConvert - Retro Pixel Edition</title>
+    <title>PseudoConvert - Pro Pixel Edition</title>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Share+Tech+Mono&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -31,19 +31,19 @@
 
         .container {
             width: 100%;
-            max-width: 750px;
+            max-width: 800px;
             background: var(--panel-bg);
             border: 4px solid var(--accent-cyan);
             box-shadow: 8px 8px 0px var(--accent-pink);
             padding: 30px;
             box-sizing: border-box;
-            margin-top: 30px;
+            margin-top: 20px;
         }
 
         h1 {
             font-family: 'Press Start 2P', monospace;
             color: var(--accent-cyan);
-            font-size: 22px;
+            font-size: 20px;
             text-align: center;
             text-shadow: 3px 3px var(--accent-pink);
             margin-bottom: 5px;
@@ -51,16 +51,16 @@
 
         .slogan {
             font-family: 'Press Start 2P', monospace;
-            font-size: 9px;
+            font-size: 8px;
             color: var(--accent-yellow);
             text-align: center;
-            margin-bottom: 30px;
+            margin-bottom: 25px;
             text-transform: uppercase;
         }
 
         .dropzone {
             border: 3px dashed var(--accent-pink);
-            padding: 30px;
+            padding: 25px;
             text-align: center;
             background: #1f113a;
             cursor: pointer;
@@ -75,7 +75,7 @@
 
         .dropzone p {
             font-family: 'Press Start 2P', monospace;
-            font-size: 10px;
+            font-size: 9px;
             color: var(--text-color);
             line-height: 1.6;
         }
@@ -85,8 +85,8 @@
         }
 
         #fileList {
-            margin-bottom: 25px;
-            max-height: 250px;
+            margin-bottom: 20px;
+            max-height: 300px;
             overflow-y: auto;
         }
 
@@ -98,16 +98,32 @@
             justify-content: space-between;
             align-items: center;
             margin-bottom: 10px;
-            font-size: 14px;
+            font-size: 13px;
+            gap: 10px;
+        }
+
+        .file-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
 
         .file-item select {
             background: #231043;
             color: var(--accent-cyan);
             border: 2px solid var(--accent-cyan);
-            padding: 5px;
+            padding: 4px;
             font-family: 'Share Tech Mono', monospace;
             font-weight: bold;
+            cursor: pointer;
+        }
+
+        .bg-remove-label {
+            font-size: 10px;
+            color: var(--accent-yellow);
+            display: flex;
+            align-items: center;
+            gap: 4px;
             cursor: pointer;
         }
 
@@ -115,7 +131,7 @@
             background: var(--accent-pink);
             color: white;
             font-family: 'Press Start 2P', monospace;
-            font-size: 12px;
+            font-size: 11px;
             border: 3px solid #fff;
             padding: 15px;
             width: 100%;
@@ -131,16 +147,11 @@
             box-shadow: 6px 6px 0px var(--accent-cyan);
         }
 
-        .action-btn:active {
-            transform: translate(2px, 2px);
-            box-shadow: 2px 2px 0px var(--accent-cyan);
-        }
-
         #loading {
             display: none;
             text-align: center;
             font-family: 'Press Start 2P', monospace;
-            font-size: 10px;
+            font-size: 9px;
             color: var(--accent-yellow);
             margin-top: 20px;
             animation: blink 1s infinite;
@@ -161,16 +172,16 @@
 
         <form id="convertForm" action="/convert" method="POST" enctype="multipart/form-data">
             <div class="dropzone" onclick="document.getElementById('fileInput').click();">
-                <p>📂 CLICK OR DROP FILES HERE<br><span style="font-size: 8px; color: #8b82a8;">(Select multiple files)</span></p>
+                <p>📂 CLICK OR DROP FILES HERE<br><span style="font-size: 7px; color: #8b82a8;">(PNG, JPG, SVG, ICO, CUR, PDF, etc.)</span></p>
                 <input type="file" id="fileInput" name="files" multiple>
             </div>
 
             <div id="fileList"></div>
 
-            <button type="submit" class="action-btn" id="submitBtn" style="display:none;">Convert All & Download ZIP</button>
+            <button type="submit" class="action-btn" id="submitBtn" style="display:none;">Convert Batch & Download ZIP</button>
         </form>
 
-        <div id="loading">⚡ CONVERTING PIXELS... PLEASE WAIT ⚡</div>
+        <div id="loading">⚡ PROCESSING PIXELS & BG REMOVAL... ⚡</div>
     </div>
 
 <script>
@@ -183,8 +194,7 @@
     let selectedFilesData = [];
 
     fileInput.addEventListener('change', (e) => {
-        const files = Array.from(e.target.files);
-        selectedFilesData = files;
+        selectedFilesData = Array.from(e.target.files);
         renderFileList();
     });
 
@@ -201,16 +211,23 @@
             item.className = 'file-item';
             
             item.innerHTML = `
-                <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 55%;">${file.name}</span>
-                <div>
-                    <label style="font-size: 11px; color: #a5b4fc;">TO:</label>
-                    <select name="formats" data-index="${index}">
-                        <option value="png">PNG</option>
-                        <option value="jpg">JPG</option>
-                        <option value="webp">WEBP</option>
-                        <option value="avif">AVIF</option>
-                        <option value="tiff">TIFF</option>
-                    </select>
+                <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 35%;">${file.name}</span>
+                <div class="file-controls">
+                    <label class="bg-remove-label">
+                        <input type="checkbox" name="removeBg_${index}" value="true"> No-BG
+                    </label>
+                    <div>
+                        <span style="font-size: 10px; color: #a5b4fc;">TO:</span>
+                        <select name="formats" data-index="${index}">
+                            <option value="png">PNG</option>
+                            <option value="jpg">JPG</option>
+                            <option value="webp">WEBP</option>
+                            <option value="svg">SVG</option>
+                            <option value="ico">ICO</option>
+                            <option value="cur">CUR</option>
+                            <option value="pdf">PDF</option>
+                        </select>
+                    </div>
                 </div>
             `;
             fileListDiv.appendChild(item);
@@ -224,12 +241,12 @@
 
         const formData = new FormData();
         
-        // Append raw files
-        selectedFilesData.forEach(file => {
+        selectedFilesData.forEach((file, index) => {
             formData.append('files', file);
+            const bgCheckbox = document.querySelector(`input[name="removeBg_${index}"]`);
+            formData.append('removeBg', bgCheckbox ? bgCheckbox.checked : false);
         });
 
-        // Append corresponding custom formats selected for each file
         const selects = document.querySelectorAll('select[name="formats"]');
         selects.forEach(sel => {
             formData.append('formats', sel.value);
@@ -246,7 +263,7 @@
                 const url = window.URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = 'pseudoconvert-batch.zip';
+                a.download = 'pseudoconvert-pro.zip';
                 document.body.appendChild(a);
                 a.click();
                 a.remove();
