@@ -1,1 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PseudoConvert - Free File Converter</title>
+    <style>
+        body { font-family: Arial, sans-serif; background: #0f172a; color: #f8fafc; text-align: center; margin: 0; padding: 50px; }
+        .container { max-width: 600px; margin: auto; background: #1e293b; padding: 30px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); }
+        h1 { color: #38bdf8; margin-bottom: 5px; }
+        .slogan { font-style: italic; color: #94a3b8; margin-bottom: 25px; }
+        input[type="file"], select { margin: 15px 0; padding: 10px; background: #334155; color: white; border: 1px solid #475569; border-radius: 6px; width: 80%; }
+        button { background: #0ea5e9; color: white; border: none; padding: 12px 25px; font-size: 16px; border-radius: 6px; cursor: pointer; font-weight: bold; }
+        button:hover { background: #0284c7; }
+        #loading { display: none; margin-top: 15px; color: #38bdf8; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>PseudoConvert</h1>
+        <p class="slogan">"We will convert anything for free."</p>
+        
+        <form id="uploadForm" action="/convert" method="POST" enctype="multipart/form-data">
+            <div>
+                <input type="file" name="files" multiple required><br>
+            </div>
+            <div>
+                <label>Convert to format: </label>
+                <select name="format">
+                    <option value="png">PNG</option>
+                    <option value="jpg">JPG</option>
+                    <option value="webp">WEBP</option>
+                    <option value="avif">AVIF</option>
+                    <option value="tiff">TIFF</option>
+                </select>
+            </div>
+            <button type="submit">Convert & Download ZIP</button>
+        </form>
+        <div id="loading">Converting your files... Please wait.</div>
+    </div>
 
+<script>
+    document.getElementById('uploadForm').onsubmit = function() {
+        document.getElementById('loading').style.display = 'block';
+    };
+</script>
+</body>
+</html>
