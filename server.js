@@ -12,6 +12,43 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static('public'));
 
+// Helper to create valid Windows .ico or .cur buffers from PNG buffers
+async function createWindowsCursorOrIcon(pngBuffer, type = 'ico') {
+    const metadata = await sharp(pngBuffer).metadata();
+    const width = metadata.width >= 256 ? 0 : metadata.width; // 0 means 256px inico spec
+    const height = metadata.height >= 256 ? 0 : metadata.height;
+    
+    const imageType = type === 'cur' ? 2 : 1; // 2 = CUR, 1 = ICO
+    const headerSize = 6;
+    const directoryEntrySize = 16;
+    const imageOffset = headerSize + directoryEntrySize;
+
+    const header = Buffer.alloc(headerSize);
+    header.writeUInt16LE(0, 0); // Reserved
+    header.writeUInt16LE(imageType, 2); // Type (1=ICO, 2=CUR)
+    header.writeUInt16LE(1, 1); // Image count
+
+    const entry = Buffer.alloc(directoryEntrySize);
+    entry.writeUInt8(width, 0);
+    entry.writeUInt8(height, 1);
+    entry.writeUInt8(0, 2); // Color palette
+    entry.writeUInt8(0, 3); // Reserved
+    
+    if (type === 'cur') {
+        // Hotspot coordinates (center of the image by default)
+        entry.writeUInt16LE(Math.floor(metadata.width / 2), 4);
+        entry.writeUInt16LE(Math.floor(metadata.height / 2), 6);
+    } else {
+        entry.writeUInt16LE(1, 4); // Color planes
+        entry.writeUInt16LE(32, 6); // Bits per pixel
+    }
+
+    entry.writeUInt32LE(pngBuffer.length, 8); // Size of image data
+    entry.writeUInt32LE(imageOffset, 12); // Offset of image data
+
+    return Buffer.concat([header, entry, pngBuffer]);
+}
+
 app.post('/convert', upload.array('files'), async (req, res) => {
     if (!req.files || req.files.length === 0) {
         return res.status(400).send('No files uploaded.');
@@ -38,42 +75,45 @@ app.post('/convert', upload.array('files'), async (req, res) => {
             let targetFormat = formats[i] ? formats[i].toLowerCase().replace('.', '') : 'png';
             const shouldRemoveBg = removeBgs && (removeBgs[i] === 'true' || removeBgs[i] === true);
             const originalName = path.parse(file.originalname).name;
-            
-            // ICO and CUR formats are structurally similar; processed via PNG/ICO container standards
-            let actualTarget = targetFormat;
-            if (targetFormat === 'ico' || targetFormat === 'cur') {
-                actualTarget = 'png'; // Render pipeline handles base buffer, named with proper extension below
-            }
-
             const outputFileName = `${originalName}.${targetFormat}`;
             const outputPath = path.join(outputDir, outputFileName);
 
             try {
                 let pipeline = sharp(file.path);
 
-                // Background removal toggle (Auto threshold background cleanup)
                 if (shouldRemoveBg) {
-                    pipeline = pipeline.ensureAlpha().linear(1.0, 0).flatten({ background: { r: 255, g: 255, b: 255 } });
-                    // Advanced color manipulation can be handled via thresholding pixel channels
+                    pipeline = pipeline.ensureAlpha().flatten({ background: { r: 255, g: 255, b: 255 } });
                 }
 
                 if (targetFormat === 'ico' || targetFormat === 'cur') {
-                    await pipeline
-                        .resize(256, 256, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } })
-                        .toFormat('png')
-                        .toFile(outputPath);
-                } else {
-                    await pipeline
-                        .toFormat(actualTarget)
-                        .toFile(outputPath);
-                }
+                    // Resize to a standard cursor/icon resolution (e.g., 64x64 or 128x128 works best for Windows cursors)
+                    const pngBuffer = await pipeline
+                        .resize(64, 64, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } })
+                        .png()
+                        .toBuffer();
 
-                convertedFiles.push(outputPath);
+                    const validBinaryBuffer = await createWindowsCursorOrIcon(pngBuffer, targetFormat);
+                    fs.writeFileSync(outputPath, validBinaryBuffer);
+                    convertedFiles.push(outputPath);
+                } else {
+                    // Standard raster formats (PNG, JPG, WEBP)
+                    await pipeline
+                        .toFormat(targetFormat)
+                        .toFile(outputPath);
+                    convertedFiles.push(outputPath);
+                }
             } catch (err) {
                 console.error(`Conversion error for ${file.originalname}:`, err.message);
+                // Prevent writing 1-byte corrupt files by cleaning up failed outputs
+                if (fs.existsSync(outputPath)) {
+                    fs.unlinkSync(outputPath);
+                }
             }
 
-            fs.unlinkSync(file.path);
+            // Cleanup raw upload
+            if (fs.existsSync(file.path)) {
+                fs.unlinkSync(file.path);
+            }
         }
 
         if (convertedFiles.length === 0) {
@@ -81,7 +121,7 @@ app.post('/convert', upload.array('files'), async (req, res) => {
         }
 
         res.setHeader('Content-Type', 'application/zip');
-        res.setHeader('Content-Disposition', 'attachment; filename=pseudoconvert-pro.zip');
+        res.setHeader('Content-Disposition', 'attachment; filename=pseudoconvert-fixed.zip');
 
         const archive = archiver('zip', { zlib: { level: 9 } });
         archive.pipe(res);
@@ -104,5 +144,5 @@ app.post('/convert', upload.array('files'), async (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-    console.log(`PseudoConvert PRO running on port ${PORT}`);
+    console.log(`PseudoConvert Fixed running on port ${PORT}`);
 });
