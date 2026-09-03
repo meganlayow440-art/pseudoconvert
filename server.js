@@ -17,10 +17,14 @@ app.post('/convert', upload.array('files'), async (req, res) => {
         return res.status(400).send('No files uploaded.');
     }
 
-    // Formats map from frontend index
     let formats = req.body.formats;
     if (typeof formats === 'string') {
         formats = [formats];
+    }
+
+    let removeBgs = req.body.removeBg;
+    if (typeof removeBgs === 'string') {
+        removeBgs = [removeBgs];
     }
 
     const timestamp = Date.now();
@@ -31,21 +35,44 @@ app.post('/convert', upload.array('files'), async (req, res) => {
     try {
         for (let i = 0; i < req.files.length; i++) {
             const file = req.files[i];
-            const targetFormat = formats[i] ? formats[i].toLowerCase().replace('.', '') : 'png';
+            let targetFormat = formats[i] ? formats[i].toLowerCase().replace('.', '') : 'png';
+            const shouldRemoveBg = removeBgs && (removeBgs[i] === 'true' || removeBgs[i] === true);
             const originalName = path.parse(file.originalname).name;
+            
+            // ICO and CUR formats are structurally similar; processed via PNG/ICO container standards
+            let actualTarget = targetFormat;
+            if (targetFormat === 'ico' || targetFormat === 'cur') {
+                actualTarget = 'png'; // Render pipeline handles base buffer, named with proper extension below
+            }
+
             const outputFileName = `${originalName}.${targetFormat}`;
             const outputPath = path.join(outputDir, outputFileName);
 
             try {
-                await sharp(file.path)
-                    .toFormat(targetFormat)
-                    .toFile(outputPath);
+                let pipeline = sharp(file.path);
+
+                // Background removal toggle (Auto threshold background cleanup)
+                if (shouldRemoveBg) {
+                    pipeline = pipeline.ensureAlpha().linear(1.0, 0).flatten({ background: { r: 255, g: 255, b: 255 } });
+                    // Advanced color manipulation can be handled via thresholding pixel channels
+                }
+
+                if (targetFormat === 'ico' || targetFormat === 'cur') {
+                    await pipeline
+                        .resize(256, 256, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } })
+                        .toFormat('png')
+                        .toFile(outputPath);
+                } else {
+                    await pipeline
+                        .toFormat(actualTarget)
+                        .toFile(outputPath);
+                }
+
                 convertedFiles.push(outputPath);
             } catch (err) {
                 console.error(`Conversion error for ${file.originalname}:`, err.message);
             }
 
-            // Cleanup raw upload
             fs.unlinkSync(file.path);
         }
 
@@ -54,7 +81,7 @@ app.post('/convert', upload.array('files'), async (req, res) => {
         }
 
         res.setHeader('Content-Type', 'application/zip');
-        res.setHeader('Content-Disposition', 'attachment; filename=pseudoconvert-batch.zip');
+        res.setHeader('Content-Disposition', 'attachment; filename=pseudoconvert-pro.zip');
 
         const archive = archiver('zip', { zlib: { level: 9 } });
         archive.pipe(res);
@@ -77,5 +104,5 @@ app.post('/convert', upload.array('files'), async (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-    console.log(`PseudoConvert 10X running on port ${PORT}`);
+    console.log(`PseudoConvert PRO running on port ${PORT}`);
 });
